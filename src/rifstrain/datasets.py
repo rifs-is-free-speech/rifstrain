@@ -7,7 +7,7 @@ writing datasets), this module contains the classes for the datasets for
 training. The classes contained in the module are:
 
     - SpeechDataset
-    - SpeechCollater
+    - SpeechCollator
 
 """
 
@@ -94,7 +94,7 @@ class SpeechDataset(Dataset):
         return sample
 
 
-class SpeechCollater:
+class SpeechCollator:
     """
     Data collator that will dynamically pad the inputs received.
 
@@ -113,7 +113,7 @@ class SpeechCollater:
     """
 
     def __init__(self, processor, padding: Union[bool, str] = True):
-        """Constructor method for the SpeechCollater class."""
+        """Constructor method for the SpeechCollator class."""
         self.processor = processor
         self.padding = padding
 

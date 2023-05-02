@@ -7,18 +7,15 @@ import torch
 import shutil
 
 import evaluate as ev
+
 from torchvision import transforms
-
-from rifs.model.settings import ModelSettings
-
-from rifs.datasets import SpeechDataset, SpeechCollator
-
-from utils import (
+from rifstrain.settings import ModelSettings
+from rifstrain.datasets import SpeechDataset, SpeechCollator
+from rifstrain.utils import (
     ToTensor,
     RemoveSpecialCharacters,
     PrepareDataset,
 )
-
 from transformers import (
     Wav2Vec2Processor,
     Wav2Vec2ForCTC,

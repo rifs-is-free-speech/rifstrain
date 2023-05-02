@@ -4,23 +4,20 @@ Module for fine-tuning the Alvenir/wav2vec2-base-da model on the ftspeech datase
 import os
 import sys
 import torch
-
 import warnings
 import transformers
 
-from rifs.model.compute_metrics import compute_metrics
-from rifs.model.callbacks import StatusUpdater, CsvLogger, Timekeeper
-from rifs.model.settings import ModelSettings, TrainerSettings
-
-from rifs.datasets import SpeechDataset, SpeechCollator
-
-from utils import (
+from rifstrain.compute_metrics import compute_metrics
+from rifstrain.callbacks import StatusUpdater, CsvLogger, Timekeeper
+from rifstrain.settings import ModelSettings, TrainerSettings
+from rifstrain.datasets import SpeechDataset, SpeechCollator
+from rifstrain.utils import (
     ToTensor,
     RemoveSpecialCharacters,
     PrepareDataset,
 )
 
-from vocab import write_vocab
+from rifstrain.vocab import write_vocab
 
 from transformers import (
     Wav2Vec2FeatureExtractor,
