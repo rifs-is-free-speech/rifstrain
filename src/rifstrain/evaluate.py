@@ -27,12 +27,11 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 @torch.no_grad()
 def evaluate(
-    tsv_test_file: str,
+    csv_test_file: str,
     data_path: str,
     model_path: str,
     output_path: str,
-    noise_pack: str,
-    run_id: str,
+    dataset_name: str,
     eval_snapshots: bool = True,
     max_predict: int = 100,
     move_files: bool = False,
@@ -42,28 +41,26 @@ def evaluate(
 
     Parameters
     ----------
-    tsv_test_file : str
-        Path to the test tsv file.
+    csv_test_file : str
+        Path to the test csv file.
     data_path : str
         Path to the dataset folder.
     model_path : str
         Path to the model file.
     output_path : str
         Path to the output folder.
-    noise_pack : str
-        String denoting the noise pack.
-    run_id : str
-        ID of the run.
+    dataset_name : str
+        name of dataset to load data from
     eval_snapshots : bool
         Whether to evaluate intermediate models saved at steps.
     max_predict : int
         Maximum number of predictions to make.
     """
 
-    # Load settings and wer metrics
     ms = ModelSettings()
     wer_metric = ev.load("wer")
 
+    # TODO: Refactor all of this
     clean_data_path = os.path.join(
         data_path, f"clean_noise_data_{noise_pack}" if noise_pack else "clean_data"
     )

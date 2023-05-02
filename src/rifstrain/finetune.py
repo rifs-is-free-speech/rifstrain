@@ -36,13 +36,11 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def finetune(
-    tsv_train_file: str,
-    tsv_test_file: str,
+    csv_train_file: str,
+    csv_test_file: str,
     data_path: str,
     model_path: str,
     from_pretrained_name: str,
-    noise_pack: str,
-    run_id: str,
     hours: int = 60,
     minutes: int = 0,
     test: bool = False,
@@ -53,20 +51,16 @@ def finetune(
 
     Parameters
     ----------
-    tsv_train_file : str
-        Path to the train tsv file.
-    tsv_test_file : str
-        Path to the test tsv file.
+    csv_train_file : str
+        Path to the train csv file.
+    csv_test_file : str
+        Path to the test csv file.
     data_path : str
         Path to the dataset folder.
     model_path : str
         Path to the model file.
     from_pretrained_name : str
         Name of the pretrained model.
-    noise_pack : str
-        Name of the noise pack to use.
-    run_id : str
-        ID of the run.
     hours : int
         Number of hours to train for.
     minutes : int
@@ -74,6 +68,8 @@ def finetune(
     test : bool
         Whether to run a test run with reduced parameters.
     """
+
+    # TODO: Refactor all of this
 
     ms = ModelSettings()
     ts = TrainerSettings()
