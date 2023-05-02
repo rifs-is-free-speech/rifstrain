@@ -38,7 +38,7 @@ warnings.filterwarnings("ignore")
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def fine_tune(
+def finetune(
     tsv_train_file: str,
     tsv_test_file: str,
     data_path: str,
