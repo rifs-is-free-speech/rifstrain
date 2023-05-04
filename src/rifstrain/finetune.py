@@ -23,7 +23,7 @@ from transformers import (
     Wav2Vec2FeatureExtractor,
     Wav2Vec2Processor,
     Wav2Vec2CTCTokenizer,
-    Wav2Vec2ForCTC,
+    AutoModel,
     TrainingArguments,
     Trainer,
 )
@@ -38,9 +38,9 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 def finetune(
     csv_train_file: str,
     csv_test_file: str,
-    data_path: str,
-    model_path: str,
-    from_pretrained_name: str,
+    dataset_path: str,
+    pretrained_name: str,
+    output_dir: str,
     hours: int = 60,
     minutes: int = 0,
     test: bool = False,
@@ -55,12 +55,12 @@ def finetune(
         Path to the train csv file.
     csv_test_file : str
         Path to the test csv file.
-    data_path : str
-        Path to the dataset folder.
-    model_path : str
-        Path to the model file.
-    from_pretrained_name : str
+    dataset_path : str
+        Path to the dataset.
+    pretrained_name : str
         Name of the pretrained model.
+    output_dir : str
+        Path to where the fine-tuned model should be located.
     hours : int
         Number of hours to train for.
     minutes : int
@@ -70,17 +70,14 @@ def finetune(
     """
 
     # TODO: Refactor all of this
+    # TODO: How to handle run_id?
 
     ms = ModelSettings()
     ts = TrainerSettings()
 
-    clean_data_path = os.path.join(
-        data_path, f"clean_noise_data_{noise_pack}" if noise_pack else "clean_data"
-    )
-
-    write_vocab(clean_data_path)
+    write_vocab(dataset_path)
     tokenizer = Wav2Vec2CTCTokenizer(
-        os.path.join(clean_data_path, "vocab.json"),
+        os.path.join(dataset_path, "vocab.json"),
         unk_token="[UNK]",
         pad_token="[PAD]",
         word_delimiter_token="|",
@@ -104,18 +101,18 @@ def finetune(
         PrepareDataset(processor=processor),
     ]
 
-    trnsfrms_train, trnsfrms_dev = transforms.Compose(
-        trnsfrms_base
-    ), transforms.Compose(trnsfrms_base)
+    trnsfrms_train = transforms.Compose(trnsfrms_base)
+    trnsfrms_dev = transforms.Compose(trnsfrms_base)
 
     # Load datasets
-    train_dataset = SpeechDataset(tsv_train_file, clean_data_path, trnsfrms_train)
-    test_dataset = SpeechDataset(tsv_test_file, clean_data_path, trnsfrms_dev)
+    train_dataset = SpeechDataset(csv_train_file, dataset_path, trnsfrms_train)
+    test_dataset = SpeechDataset(csv_test_file, dataset_path, trnsfrms_dev)
 
     data_collator = SpeechCollator(processor=processor, padding=True)
 
-    model = Wav2Vec2ForCTC.from_pretrained(
-        from_pretrained_name,
+    # TODO: How to load the model?
+    model = AutoModel.from_pretrained(
+        "Alvenir/wav2vec2-base-da", #pretrained_name,
         attention_dropout=ms.attention_dropout,
         hidden_dropout=ms.hidden_dropout,
         feat_proj_dropout=ms.feat_proj_dropout,
@@ -129,7 +126,7 @@ def finetune(
     model.freeze_feature_encoder()
 
     training_args = TrainingArguments(
-        output_dir=os.path.join(model_path, "wave2vec2-base-da-snapshot"),
+        output_dir=os.path.join(output_dir, "checkpoints"),
         auto_find_batch_size=True,
         learning_rate=ts.lr,
         weight_decay=0.05,
@@ -153,7 +150,7 @@ def finetune(
     )
     if test:
         training_args = TrainingArguments(
-            output_dir=os.path.join(model_path, "wave2vec2-base-da-snapshot"),
+            output_dir=os.path.join(output_dir, "checkpoints"),
             auto_find_batch_size=True,
             learning_rate=ts.lr,
             weight_decay=0.05,
@@ -186,16 +183,14 @@ def finetune(
         tokenizer=processor.feature_extractor,
         callbacks=[
             CsvLogger(),
-            StatusUpdater(),
             Timekeeper(
                 hours=hours,
                 minutes=minutes,
-                run_id=run_id,
             ),
         ],
     )
 
     trainer.train()
 
-    trainer.save_model(model_path)
-    processor.save_pretrained(model_path)
+    trainer.save_model(output_dir)
+    processor.save_pretrained(output_dir)

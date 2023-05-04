@@ -18,23 +18,23 @@ import numpy as np
 import pandas as pd
 import soundfile as sf
 
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Callable
 from torch.utils.data import Dataset
+
+from transformers import AutoProcessor
 
 
 class SpeechDataset(Dataset):
     """SpeechDataset implements a generic Dataset class for the speech datasets"""
 
-    def __init__(self, csv_file, dataset_path, transform=None, shuffle=False):
+    def __init__(self, csv_file: str, transform: Callable = None, shuffle: bool = False):
         """
 
         Parameters
         ----------
         csv_file : str
             Path to the csv file containing the dataset.
-        dataset_path : str
-            Path to the audio folder.
-        transform : callable, optional
+        transform : Callable, optional
             Optional transform to be applied on a sample.
         shuffle : bool
             Whether to shuffle the dataset.
@@ -47,7 +47,7 @@ class SpeechDataset(Dataset):
         if shuffle:
             np.random.shuffle(self.utterances)
 
-        self.dataset_path = dataset_path
+        self.dataset_path = os.path.dirname(csv_file)
         self.transform = transform
 
     def __len__(self):
@@ -61,7 +61,7 @@ class SpeechDataset(Dataset):
         """
         return len(self.utterances)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         """
         Return the item at the given index.
 
@@ -112,7 +112,7 @@ class SpeechCollator:
         different lengths).
     """
 
-    def __init__(self, processor, padding: Union[bool, str] = True):
+    def __init__(self, processor: AutoProcessor, padding: Union[bool, str] = True):
         """Constructor method for the SpeechCollator class."""
         self.processor = processor
         self.padding = padding
