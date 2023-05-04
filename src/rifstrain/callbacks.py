@@ -5,12 +5,9 @@ File containing callback functions used during Training.
 
 We implement the following Callback options:
 
-    - CsvLogger
-    - StatusUpdater
-    - Timekeeper
+    - CsvLogger: Save training metrics to CSV file.
+    - Timekeeper: Stop model training when time is up.
 
-These are used to log training progress and make sure we
-gracefully stop models when they get close to the time limit.
 """
 
 import pendulum

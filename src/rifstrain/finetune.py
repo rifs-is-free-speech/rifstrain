@@ -1,5 +1,11 @@
-"""
-Module for fine-tuning the Alvenir/wav2vec2-base-da model on the ftspeech dataset.
+"""Fine tune
+=========
+Module for fine-tuning the ASR models
+
+This module contains only one function:
+
+    - finetune: fine-tune the ASR models
+
 """
 import os
 import sys
@@ -8,7 +14,7 @@ import warnings
 import transformers
 
 from rifstrain.compute_metrics import compute_metrics
-from rifstrain.callbacks import StatusUpdater, CsvLogger, Timekeeper
+from rifstrain.callbacks import CsvLogger, Timekeeper
 from rifstrain.settings import ModelSettings, TrainerSettings
 from rifstrain.datasets import SpeechDataset, SpeechCollator
 from rifstrain.utils import (
@@ -38,13 +44,15 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 def finetune(
     csv_train_file: str,
     csv_test_file: str,
-    dataset_path: str,
-    pretrained_name: str,
-    output_dir: str,
+    pretrained_path: str,
     hours: int = 60,
     minutes: int = 0,
-    test: bool = False,
+    reduced_training_arguments: bool = True,
+    model_save_location: str = ".",
     warmup_steps: int = 0,
+    verbose: bool = False,
+    quiet: bool = False,
+    seed: int = 0,
 ):
     """
     Fine-tunes the model on the given dataset.
@@ -55,22 +63,27 @@ def finetune(
         Path to the train csv file.
     csv_test_file : str
         Path to the test csv file.
-    dataset_path : str
-        Path to the dataset.
-    pretrained_name : str
-        Name of the pretrained model.
-    output_dir : str
-        Path to where the fine-tuned model should be located.
+    pretrained_path : str
+        Path to the pretrained model.
     hours : int
         Number of hours to train for.
     minutes : int
         Number of minutes to train for in addition to hours.
-    test : bool
+    reduced_training_arguments : bool
         Whether to run a test run with reduced parameters.
+    model_save_location : str
+        Path to the directory where the model should be saved.
+    warmup_steps : int
+        Number of warmup steps.
+    verbose : bool
+        Whether to print the training progress.
+    quiet : bool
+        Whether to print nothing.
+    seed : int
+        Random seed.
     """
-
-    # TODO: Refactor all of this
-    # TODO: How to handle run_id?
+    dataset_path = os.path.dirname(csv_train_file)
+    os.makedirs(model_save_location, exist_ok=True)
 
     ms = ModelSettings()
     ts = TrainerSettings()
@@ -105,14 +118,13 @@ def finetune(
     trnsfrms_dev = transforms.Compose(trnsfrms_base)
 
     # Load datasets
-    train_dataset = SpeechDataset(csv_train_file, dataset_path, trnsfrms_train)
-    test_dataset = SpeechDataset(csv_test_file, dataset_path, trnsfrms_dev)
+    train_dataset = SpeechDataset(csv_train_file, trnsfrms_train)
+    test_dataset = SpeechDataset(csv_test_file, trnsfrms_dev)
 
     data_collator = SpeechCollator(processor=processor, padding=True)
 
-    # TODO: How to load the model?
     model = AutoModel.from_pretrained(
-        "Alvenir/wav2vec2-base-da", #pretrained_name,
+        "Alvenir/wav2vec2-base-da",  # pretrained_name,
         attention_dropout=ms.attention_dropout,
         hidden_dropout=ms.hidden_dropout,
         feat_proj_dropout=ms.feat_proj_dropout,
@@ -126,7 +138,7 @@ def finetune(
     model.freeze_feature_encoder()
 
     training_args = TrainingArguments(
-        output_dir=os.path.join(output_dir, "checkpoints"),
+        output_dir=os.path.join(model_save_location, "checkpoints"),
         auto_find_batch_size=True,
         learning_rate=ts.lr,
         weight_decay=0.05,
@@ -148,9 +160,9 @@ def finetune(
         save_total_limit=15,
         push_to_hub=False,
     )
-    if test:
+    if reduced_training_arguments:
         training_args = TrainingArguments(
-            output_dir=os.path.join(output_dir, "checkpoints"),
+            output_dir=os.path.join(model_save_location, "checkpoints"),
             auto_find_batch_size=True,
             learning_rate=ts.lr,
             weight_decay=0.05,
@@ -192,5 +204,5 @@ def finetune(
 
     trainer.train()
 
-    trainer.save_model(output_dir)
-    processor.save_pretrained(output_dir)
+    trainer.save_model(model_save_location)
+    processor.save_pretrained(model_save_location)
