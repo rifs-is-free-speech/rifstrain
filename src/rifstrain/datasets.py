@@ -27,7 +27,9 @@ from transformers import AutoProcessor
 class SpeechDataset(Dataset):
     """SpeechDataset implements a generic Dataset class for the speech datasets"""
 
-    def __init__(self, csv_file: str, transform: Callable = None, shuffle: bool = False):
+    def __init__(
+        self, csv_file: str, transform: Callable = None, shuffle: bool = False
+    ):
         """
 
         Parameters
@@ -78,7 +80,7 @@ class SpeechDataset(Dataset):
         item = self.utterances[index]
 
         target_txt = item[self.columns.index("text")]
-        file_path = item[self.columns.index("file")]
+        file_path = item[self.columns.index("id")]
 
         audio_array, sampling_rate = sf.read(os.path.join(self.dataset_path, file_path))
 

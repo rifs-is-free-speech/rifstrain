@@ -26,13 +26,15 @@ from rifstrain.utils import (
 from rifstrain.vocab import write_vocab
 
 from transformers import (
+    Wav2Vec2ForCTC,
     Wav2Vec2FeatureExtractor,
     Wav2Vec2Processor,
     Wav2Vec2CTCTokenizer,
-    AutoModel,
     TrainingArguments,
     Trainer,
 )
+
+from transformers.trainer_utils import get_last_checkpoint
 
 from torchvision import transforms
 
@@ -48,7 +50,7 @@ def finetune(
     hours: int = 60,
     minutes: int = 0,
     reduced_training_arguments: bool = True,
-    model_save_location: str = ".",
+    model_save_location: str = "model",
     warmup_steps: int = 0,
     verbose: bool = False,
     quiet: bool = False,
@@ -83,10 +85,23 @@ def finetune(
         Random seed.
     """
     dataset_path = os.path.dirname(csv_train_file)
+    dataset_name = os.path.basename(dataset_path)
+    model_name = os.path.basename(model_save_location)
+
+    torch.manual_seed(seed)
+
+    if verbose and not quiet:
+        print(f"Dataset: {dataset_name}")
+        print(f"Model: {model_name}")
+
     os.makedirs(model_save_location, exist_ok=True)
 
     ms = ModelSettings()
     ts = TrainerSettings()
+
+    if verbose and not quiet:
+        print(f"Model settings: {ms}")
+        print(f"Trainer settings: {ts}")
 
     write_vocab(dataset_path)
     tokenizer = Wav2Vec2CTCTokenizer(
@@ -108,6 +123,11 @@ def finetune(
         feature_extractor=feature_extractor, tokenizer=tokenizer
     )
 
+    if verbose and not quiet:
+        print(f"tokenizer: {tokenizer}")
+        print(f"feature_extractor: {feature_extractor}")
+        print(f"processor: {processor}")
+
     trnsfrms_base = [
         ToTensor(),
         RemoveSpecialCharacters(),
@@ -117,14 +137,19 @@ def finetune(
     trnsfrms_train = transforms.Compose(trnsfrms_base)
     trnsfrms_dev = transforms.Compose(trnsfrms_base)
 
-    # Load datasets
+    if not quiet:
+        print("Loading datasets")
+
     train_dataset = SpeechDataset(csv_train_file, trnsfrms_train)
     test_dataset = SpeechDataset(csv_test_file, trnsfrms_dev)
 
     data_collator = SpeechCollator(processor=processor, padding=True)
 
-    model = AutoModel.from_pretrained(
-        "Alvenir/wav2vec2-base-da",  # pretrained_name,
+    if verbose and not quiet:
+        print("Loading model...")
+
+    model = Wav2Vec2ForCTC.from_pretrained(
+        pretrained_path,
         attention_dropout=ms.attention_dropout,
         hidden_dropout=ms.hidden_dropout,
         feat_proj_dropout=ms.feat_proj_dropout,
@@ -136,6 +161,19 @@ def finetune(
     ).to(device)
 
     model.freeze_feature_encoder()
+
+    if verbose and not quiet:
+        print(f"Model: {model}")
+
+    if not quiet:
+        print("Preparing training arguments")
+
+    last_checkpoint = get_last_checkpoint(
+        os.path.join(model_save_location, "checkpoints")
+    )
+
+    if not quiet and last_checkpoint:
+        print(f"Resuming from checkpoint: {last_checkpoint}")
 
     training_args = TrainingArguments(
         output_dir=os.path.join(model_save_location, "checkpoints"),
@@ -159,7 +197,9 @@ def finetune(
         warmup_steps=warmup_steps,
         save_total_limit=15,
         push_to_hub=False,
+        resume_from_checkpoint=last_checkpoint,
     )
+
     if reduced_training_arguments:
         training_args = TrainingArguments(
             output_dir=os.path.join(model_save_location, "checkpoints"),
@@ -183,7 +223,14 @@ def finetune(
             warmup_steps=3,
             save_total_limit=1,
             push_to_hub=False,
+            resume_from_checkpoint=last_checkpoint,
         )
+
+    if verbose and not quiet:
+        print(f"Training arguments: {training_args}")
+
+    if not quiet:
+        print("Preparing trainer")
 
     trainer = Trainer(
         model=model,
@@ -194,7 +241,11 @@ def finetune(
         eval_dataset=test_dataset,
         tokenizer=processor.feature_extractor,
         callbacks=[
-            CsvLogger(),
+            CsvLogger(
+                save_location=os.path.join(model_save_location),
+                model_name=model_name,
+                dataset_name=dataset_name,
+            ),
             Timekeeper(
                 hours=hours,
                 minutes=minutes,
@@ -202,7 +253,13 @@ def finetune(
         ],
     )
 
-    trainer.train()
+    if not quiet:
+        print("Training")
+
+    trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
+
+    if not quiet:
+        print("Saving model")
 
     trainer.save_model(model_save_location)
     processor.save_pretrained(model_save_location)
