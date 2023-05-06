@@ -3,14 +3,17 @@
 
 Compute the different metric used to evaluate.
 
-Right now we only implement the following metrics:
+Right now we implement the following metrics:
 
     - WER
+    - CER
+    - Levenshtein Ratio
 
 This is by default what is loaded when you use compute_metrics
 """
 
 from evaluate import load
+from Levenshtein import ratio
 import numpy as np
 
 
@@ -28,10 +31,31 @@ class compute_metrics:
             Processor to use.
         """
         self.wer_metric = load("wer")
+        self.cer_metric = load("cer")
         self.processor = processor
 
+    def calculate_metrics(self, predictions: str, references: str):
+        """Calculate the metrics.
+
+        Parameters
+        ----------
+        predictions: str
+            Prediction string.
+        references: str
+            Label string.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the metrics.
+
+        """
+        wer = self.wer_metric.compute(predictions=predictions, references=references)
+        cer = self.cer_metric.compute(predictions=predictions, references=references)
+        return {"wer": wer, "cer": cer, "levenshtein": ratio(predictions, references)}
+
     def __call__(self, pred):
-        """Compute the WER metric.
+        """Compute the metrics.
 
         Parameters
         ----------
@@ -49,5 +73,4 @@ class compute_metrics:
         pred.label_ids[pred.label_ids == -100] = self.processor.tokenizer.pad_token_id
         pred_str = self.processor.batch_decode(pred_ids)
         label_str = self.processor.batch_decode(pred.label_ids, group_tokens=False)
-        wer = self.wer_metric.compute(predictions=pred_str, references=label_str)
-        return {"wer": wer}
+        return self.calculate_metrics(pred_str, label_str)
