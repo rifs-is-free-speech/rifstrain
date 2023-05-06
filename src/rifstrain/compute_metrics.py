@@ -50,9 +50,17 @@ class compute_metrics:
             Dictionary containing the metrics.
 
         """
+
+        assert (
+            len(predictions) == 1
+        ), "Only one prediction is supported due to Levenshtein Ratio."
+        assert (
+            len(references) == 1
+        ), "Only one prediction is supported due to Levenshtein Ratio."
+
         wer = self.wer_metric.compute(predictions=predictions, references=references)
         cer = self.cer_metric.compute(predictions=predictions, references=references)
-        return {"wer": wer, "cer": cer, "levenshtein": ratio(predictions, references)}
+        return {"WER": wer, "CER": cer, "LSR": ratio(predictions[0], references[0])}
 
     def __call__(self, pred):
         """Compute the metrics.
