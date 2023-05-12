@@ -11,6 +11,7 @@ This module contains only one function:
 
 import os
 import torch
+import pandas as pd
 
 from torchvision import transforms
 from rifstrain.compute_metrics import compute_metrics
@@ -33,7 +34,6 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 @torch.no_grad()
 def evaluate(
     csv_test_file: str,
-    data_path: str,
     pretrained_path: str,
     output_path: str,
     experiment_name: str,
@@ -47,8 +47,6 @@ def evaluate(
     ----------
     csv_test_file : str
         Path to the test csv file.
-    data_path : str
-        Path to the dataset folder.
     pretrained_path : str
         Path to the pretrained model.
     output_path : str
@@ -60,21 +58,26 @@ def evaluate(
     quiet : bool
         If True, does not print anything.
     """
-
     dataset_path = os.path.dirname(csv_test_file)
     dataset_name = os.path.basename(dataset_path)
     model_name = os.path.basename(pretrained_path)
 
     ms = ModelSettings()
 
-    output_path = os.path.join(output_path, experiment_name)
-    os.makedirs(os.path.join(output_path), exist_ok=True)
+    results_path = os.path.join(output_path, f"results_{model_name}_{dataset_name}.csv")
+    if os.path.exists(results_path):
+        if not quiet:
+            print(f"Results file '{results_path}' already exists")
+            print("Skipping evaluation")
+        return
 
-    resultsfile = f"results_{model_name}_{dataset_name}.csv"
+    experiments_path = os.path.join(output_path, "results.csv")
+    if not os.path.exists(experiments_path):
+        with open(experiments_path, "w+") as f:
+            f.write("model,dataset,metric,value\n")
 
-    with open(os.path.join(output_path, resultsfile), "w+") as f:
-        f.write("model,wer,cer,levenshtein_ratio\n")
-
+    if verbose and not quiet:
+        print(f"Loading '{dataset_name}' dataset and initializing '{model_name}' model")
     processor = Wav2Vec2Processor.from_pretrained(pretrained_path)
 
     trnsfrms = [
@@ -84,9 +87,8 @@ def evaluate(
     ]
 
     test_dataset = SpeechDataset(
-        csv_test_file,
-        dataset_path,
-        transforms.Compose(trnsfrms),
+        csv_file=csv_test_file,
+        transform=transforms.Compose(trnsfrms),
         shuffle=False,
     )
 
@@ -99,8 +101,12 @@ def evaluate(
     model = Wav2Vec2ForCTC.from_pretrained(pretrained_path).to(device)
     metrics = compute_metrics(processor=processor)
 
-    wer = 0
+    if verbose and not quiet:
+        print("Starting evaluation")
+    results = []
     for i, sample in enumerate(test_dataloader):
+        if verbose and not quiet:
+            print(f"Processing sample {i+1} of {len(test_dataloader)}")
 
         input_dict = processor(
             sample["input_values"],
@@ -108,6 +114,7 @@ def evaluate(
             return_tensors="pt",
             padding=True,
         )
+
         logits = model(input_dict["input_values"].squeeze(1).to(device)).logits
 
         pred_ids = torch.argmax(logits, dim=-1)
@@ -115,10 +122,31 @@ def evaluate(
         prediction = processor.batch_decode(pred_ids)
         references = processor.batch_decode(sample["labels"])
 
-        results = metrics.calculate_metrics(
+        result = metrics.calculate_metrics(
             predictions=prediction, references=references
         )
+
         if verbose and not quiet:
-            print(results)
-    with open(os.path.join(output_path, resultsfile), "a") as f:
-        f.write(f"{model_name},{wer}\n")
+            print(f"Prediction: {prediction[0]}")
+            print(f"Reference: {references[0]}")
+            print("\n".join([f"{k}: {v*100:.2f}%" for k, v in result.items()]) + "\n")
+
+        result["prediction"] = prediction[0]
+        result["reference"] = references[0]
+        results.append(result)
+    df = pd.DataFrame(results)
+
+    wer = df["WER"].mean()
+    cer = df["CER"].mean()
+    levenshtein_ratio = df["LSR"].mean()
+
+    if verbose and not quiet:
+        print(
+            f"Avg. wer: {wer}, Avg. cer: {cer}, Avg. levenshtein ratio: {levenshtein_ratio}"
+        )
+
+    with open(experiments_path, "a") as f:
+        for metric in ["WER", "CER", "LSR"]:
+            f.write(f"{model_name},{dataset_name},{metric},{df[metric].mean()}\n")
+
+    df.to_csv(results_path, index=False, header=True)

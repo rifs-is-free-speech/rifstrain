@@ -82,6 +82,7 @@ class SpeechDataset(Dataset):
         target_txt = item[self.columns.index("text")]
         file_path = item[self.columns.index("id")]
 
+        # TODO: Look in alignments directory
         audio_array, sampling_rate = sf.read(os.path.join(self.dataset_path, file_path))
 
         sample = {
