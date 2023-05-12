@@ -51,16 +51,16 @@ class compute_metrics:
 
         """
 
-        assert (
-            len(predictions) != 1
-        ), "Only one prediction is supported due to Levenshtein Ratio."
-        assert (
-            len(references) != 1
-        ), "Only one prediction is supported due to Levenshtein Ratio."
-
+        if len(predictions) == 1 or len(references) == 1:
+            LSR = ratio(predictions[0], references[0])
+        else:
+            avg_LSR = 0
+            for i in range(len(predictions)):
+                avg_LSR += ratio(predictions[i], references[i])
+            LSR = avg_LSR / len(predictions)
         wer = self.wer_metric.compute(predictions=predictions, references=references)
         cer = self.cer_metric.compute(predictions=predictions, references=references)
-        return {"WER": wer, "CER": cer, "LSR": ratio(predictions[0], references[0])}
+        return {"WER": wer, "CER": cer, "LSR": LSR}
 
     def __call__(self, pred):
         """Compute the metrics.
