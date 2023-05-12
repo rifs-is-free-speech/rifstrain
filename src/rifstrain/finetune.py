@@ -95,6 +95,7 @@ def finetune(
         print(f"Model: {model_name}")
 
     os.makedirs(model_save_location, exist_ok=True)
+    os.makedirs(os.path.join(model_save_location, "checkpoints"), exist_ok=True)
 
     ms = ModelSettings()
     ts = TrainerSettings()
