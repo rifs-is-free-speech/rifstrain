@@ -159,6 +159,7 @@ def finetune(
         ctc_loss_reduction="mean",
         pad_token_id=processor.tokenizer.pad_token_id,
         vocab_size=len(processor.tokenizer),
+        ignore_mismatched_sizes=True,
     ).to(device)
 
     model.freeze_feature_encoder()
