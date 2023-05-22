@@ -77,7 +77,10 @@ class CsvLogger(TrainerCallback):
         with open(join(self.save_location, "run.json"), "w") as file:
             file.write(json.dumps(json_data, default=dumper, indent=4))
 
-    def on_step_begin(self, args, state, control, **kwargs):
+        with open(join(self.save_location, "metrics.csv"), "w+") as file:
+            file.write("global_step,epoch,step,lr,loss,metrics\n")
+
+    def on_evaluate(self, args, state, control, **kwargs):
         """Callback function for logging training and evaluation metrics to a csv file.
 
         On step on training step begin will write to CSV previous metrics if any
@@ -89,7 +92,13 @@ class CsvLogger(TrainerCallback):
         control
         kwargs
         """
-        pass
+        try:
+            with open(join(self.save_location, "metrics.csv"), "a") as file:
+                file.write(
+                    f"{state.global_step},{state.epoch},{state.step},{state.lr},{state.loss},{state.metrics}\n"
+                )
+        except:  # noqa
+            pass
 
 
 class Timekeeper(TrainerCallback):
