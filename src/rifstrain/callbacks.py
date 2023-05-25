@@ -116,7 +116,7 @@ class Timekeeper(TrainerCallback):
         minutes: int
             Number of minutes to train for in addition to hours
         """
-
+        self.last_print = pendulum.now().subtract(minutes=10)
         self.start_time = pendulum.now()
         self.end_time = self.start_time.add(hours=hours, minutes=minutes)
 
@@ -131,7 +131,14 @@ class Timekeeper(TrainerCallback):
         control
         kwargs
         """
-
+        if pendulum.now().subtract(minutes=10) > self.last_print:
+            print(
+                f"Time elapsed: {pendulum.now().subtract(self.start_time).in_words()}"
+            )
+            print(
+                f"{state.global_step},{state.epoch},{state.step},{state.lr},{state.loss},{state.metrics}\n"
+            )
+            self.last_print = pendulum.now()
         if pendulum.now() > self.end_time:
             control.should_training_stop = True
             print("Stopping training")
