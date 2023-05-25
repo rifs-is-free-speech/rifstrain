@@ -141,8 +141,10 @@ def finetune(
     if not quiet:
         print("Loading datasets")
 
-    train_dataset = SpeechDataset(csv_train_file, trnsfrms_train)
-    test_dataset = SpeechDataset(csv_test_file, trnsfrms_dev)
+    train_dataset = SpeechDataset(csv_train_file, trnsfrms_train, shuffle=True)
+    test_dataset = SpeechDataset(
+        csv_test_file, trnsfrms_dev, shuffle=True, validation=True
+    )
 
     data_collator = SpeechCollator(processor=processor, padding=True)
 
@@ -179,27 +181,33 @@ def finetune(
 
     training_args = TrainingArguments(
         output_dir=os.path.join(model_save_location, "checkpoints"),
+        overwrite_output_dir=True,
+        do_train=True,
+        do_eval=True,
         auto_find_batch_size=True,
         learning_rate=ts.lr,
         weight_decay=0.05,
-        gradient_accumulation_steps=1,
         eval_accumulation_steps=1,
         num_train_epochs=sys.maxsize,
         group_by_length=True,
         evaluation_strategy="steps",
-        eval_steps=100,
-        eval_delay=0,
         dataloader_drop_last=False,
         logging_strategy="steps",
-        logging_steps=100,
+        logging_steps=10,
+        eval_steps=1000,
         logging_first_step=True,
         save_strategy="steps",
-        save_steps=10000,
+        save_steps=1000,
         gradient_checkpointing=True,
         warmup_steps=warmup_steps,
         save_total_limit=15,
         push_to_hub=False,
+        log_level="info",
         resume_from_checkpoint=last_checkpoint,
+        dataloader_num_workers=1,
+        run_name=f"{dataset_name}-{model_name}",
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_wer",
     )
 
     if reduced_training_arguments:

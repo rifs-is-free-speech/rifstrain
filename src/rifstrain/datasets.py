@@ -28,7 +28,11 @@ class SpeechDataset(Dataset):
     """SpeechDataset implements a generic Dataset class for the speech datasets"""
 
     def __init__(
-        self, csv_file: str, transform: Callable = None, shuffle: bool = False
+        self,
+        csv_file: str,
+        transform: Callable = None,
+        shuffle: bool = False,
+        validation: bool = False,
     ):
         """
 
@@ -40,6 +44,8 @@ class SpeechDataset(Dataset):
             Optional transform to be applied on a sample.
         shuffle : bool
             Whether to shuffle the dataset.
+        validation : bool
+            Whether to use the dataset for validation. And reduce its size.
         """
 
         utterances = pd.read_csv(csv_file, sep=",", header=0)
@@ -48,6 +54,11 @@ class SpeechDataset(Dataset):
 
         if shuffle:
             np.random.shuffle(self.utterances)
+
+        if validation:
+            if len(self.utterances) > 1000:
+                self.utterances = self.utterances[:1000]
+            self.utterances = self.utterances[:1000]
 
         self.dataset_path = os.path.dirname(csv_file)
         self.transform = transform
