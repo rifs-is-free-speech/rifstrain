@@ -78,7 +78,7 @@ class CsvLogger(TrainerCallback):
             file.write(json.dumps(json_data, default=dumper, indent=4))
 
         with open(join(self.save_location, "metrics.csv"), "w+") as file:
-            file.write("global_step,epoch,step,lr,loss,metrics\n")
+            file.write("global_step,epoch,lr,loss,metrics\n")
 
     def on_evaluate(self, args, state, control, **kwargs):
         """Callback function for logging training and evaluation metrics to a csv file.
@@ -95,7 +95,7 @@ class CsvLogger(TrainerCallback):
         try:
             with open(join(self.save_location, "metrics.csv"), "a") as file:
                 file.write(
-                    f"{state.global_step},{state.epoch},{state.step},{state.lr},{state.loss},{state.metrics}\n"
+                    f"{state.global_step},{state.epoch},{state.lr},{state.loss},{state.metrics}\n"
                 )
         except:  # noqa
             pass
@@ -133,11 +133,9 @@ class Timekeeper(TrainerCallback):
         """
         if pendulum.now().subtract(minutes=10) > self.last_print:
             print(
-                f"Time elapsed: {pendulum.now().subtract(self.start_time).in_words()}"
+                f"Time elapsed: {(pendulum.now() -self.start_time).in_words()}, Current step: {state.global_step}"
             )
-            print(
-                f"{state.global_step},{state.epoch},{state.step},{state.lr},{state.loss},{state.metrics}\n"
-            )
+            print(state)
             self.last_print = pendulum.now()
         if pendulum.now() > self.end_time:
             control.should_training_stop = True
