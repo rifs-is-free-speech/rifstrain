@@ -77,8 +77,8 @@ class CsvLogger(TrainerCallback):
         with open(join(self.save_location, "run.json"), "w") as file:
             file.write(json.dumps(json_data, default=dumper, indent=4))
 
-        with open(join(self.save_location, "metrics.csv"), "w+") as file:
-            file.write("global_step,epoch,lr,loss,metrics\n")
+        with open(join(self.save_location, "metrics.txt"), "w+") as file:
+            pass
 
     def on_evaluate(self, args, state, control, **kwargs):
         """Callback function for logging training and evaluation metrics to a csv file.
@@ -93,10 +93,18 @@ class CsvLogger(TrainerCallback):
         kwargs
         """
         try:
-            with open(join(self.save_location, "metrics.csv"), "a") as file:
-                file.write(
-                    f"{state.global_step},{state.epoch},{state.lr},{state.loss},{state.metrics}\n"
-                )
+            with open(join(self.save_location, "metrics.txt"), "a") as file:
+                if state.log_history:
+                    log = (
+                        ", ".join(
+                            [
+                                f"{key}: {value}"
+                                for key, value in state.log_history[-1].items()
+                            ]
+                        )
+                        + "\n"
+                    )
+                    file.write(log)
         except:  # noqa
             pass
 
@@ -135,7 +143,17 @@ class Timekeeper(TrainerCallback):
             print(
                 f"Time elapsed: {(pendulum.now() -self.start_time).in_words()}, Current step: {state.global_step}"
             )
-            print(state)
+            if state.log_history:
+                try:
+                    loss = state.log_history[-1]["loss"]
+                    learning_rate = state.log_history[-1]["learning_rate"]
+                    epoch = state.log_history[-1]["epoch"]
+                    last_step = state.log_history[-1]["step"]
+                    print(
+                        f"Last logged step: {last_step }, loss: {loss}, learning rate: {learning_rate}, epoch: {epoch}"
+                    )
+                except:  # noqa
+                    pass
             self.last_print = pendulum.now()
         if pendulum.now() > self.end_time:
             control.should_training_stop = True

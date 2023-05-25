@@ -205,7 +205,6 @@ def finetune(
         log_level="info",
         resume_from_checkpoint=last_checkpoint,
         dataloader_num_workers=1,
-        run_name=f"{dataset_name}-{model_name}",
     )
 
     if reduced_training_arguments:
