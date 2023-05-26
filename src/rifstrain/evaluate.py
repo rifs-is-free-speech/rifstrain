@@ -135,7 +135,9 @@ def evaluate(
         references = processor.batch_decode(sample["labels"])
 
         if spellcheck_model:
-            prediction = sp.spell_correct(prediction)["spell_corrected_text"]
+            prediction = [
+                sp.spell_correct(p)["spell_corrected_text"] for p in prediction
+            ]
 
         result = metrics.calculate_metrics(
             predictions=prediction, references=references
