@@ -37,6 +37,7 @@ def evaluate(
     pretrained_path: str,
     output_path: str,
     experiment_name: str,
+    spellcheck_model: str = None,
     verbose: bool = False,
     quiet: bool = False,
 ):
@@ -63,6 +64,9 @@ def evaluate(
     model_name = os.path.basename(pretrained_path)
 
     ms = ModelSettings()
+
+    if spellcheck_model:
+        model_name = model_name + "_n-gram"
 
     results_path = os.path.join(output_path, f"results_{model_name}_{dataset_name}.csv")
     if os.path.exists(results_path):
@@ -101,6 +105,14 @@ def evaluate(
     model = Wav2Vec2ForCTC.from_pretrained(pretrained_path).to(device)
     metrics = compute_metrics(processor=processor)
 
+    if spellcheck_model:
+        from spello.model import SpellCorrectionModel
+
+        sp = SpellCorrectionModel(language="en")
+        sp.load(spellcheck_model)
+        sp.config.min_length_for_spellcorrection = 3
+        sp.config.max_length_for_spellcorrection = 30
+
     if verbose and not quiet:
         print("Starting evaluation")
     results = []
@@ -121,6 +133,9 @@ def evaluate(
 
         prediction = processor.batch_decode(pred_ids)
         references = processor.batch_decode(sample["labels"])
+
+        if spellcheck_model:
+            prediction = sp.spell_correct(prediction)["spell_corrected_text"]
 
         result = metrics.calculate_metrics(
             predictions=prediction, references=references
