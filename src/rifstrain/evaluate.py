@@ -135,9 +135,12 @@ def evaluate(
         references = processor.batch_decode(sample["labels"])
 
         if spellcheck_model:
-            prediction = [
-                sp.spell_correct(p)["spell_corrected_text"] for p in prediction
-            ]
+            try:
+                prediction = [
+                    sp.spell_correct(p)["spell_corrected_text"] for p in prediction
+                ]
+            except KeyError:
+                pass
 
         result = metrics.calculate_metrics(
             predictions=prediction, references=references
