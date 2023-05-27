@@ -254,6 +254,7 @@ def finetune(
                 dataset_name=dataset_name,
             ),
             Timekeeper(
+                save_location=os.path.join(model_save_location),
                 hours=hours,
                 minutes=minutes,
             ),

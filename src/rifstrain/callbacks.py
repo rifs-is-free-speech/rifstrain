@@ -117,7 +117,7 @@ class Timekeeper(TrainerCallback):
     Callback to stop training after a certain amount of time
     """
 
-    def __init__(self, hours, minutes):
+    def __init__(self, save_location: str, hours, minutes):
         """Constructor for Timekeeper
 
         Parameters
@@ -127,6 +127,7 @@ class Timekeeper(TrainerCallback):
         minutes: int
             Number of minutes to train for in addition to hours
         """
+        self.save_location = save_location
         self.last_print = pendulum.now().subtract(minutes=10)
         self.start_time = pendulum.now()
         self.end_time = self.start_time.add(hours=hours, minutes=minutes)
